@@ -3,6 +3,10 @@
     <File Path="test-migration.ps1" />
   </Folder>
   <Folder Name="/src/">
+    <File Path="LegacyApiNode/package-lock.json" />
+    <File Path="LegacyApiNode/package.json" />
+    <File Path="LegacyApiNode/src/data.js" />
+    <File Path="LegacyApiNode/src/index.js" />
     <Project Path="LegacyApi/LegacyApi.csproj" />
     <Project Path="ModernApi/ModernApi.csproj" />
     <Project Path="Proxy/Proxy.csproj" />

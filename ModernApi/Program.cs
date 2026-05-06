@@ -21,7 +21,7 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference();
 }
 
-app.Use(async (context, next) =>
+app.Use(async (HttpContext context, Func<Task> next) =>
 {
     context.Response.OnStarting(() =>
     {
@@ -33,7 +33,7 @@ app.Use(async (context, next) =>
         return Task.CompletedTask;
     });
 
-    await  next();
+    await next();
 });
 
 var usersGroup = app.MapGroup("/api/users")

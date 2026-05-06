@@ -2,21 +2,14 @@
 
 namespace ModernApi.Services
 {
-    public class UserService
+    public class UserService(ILogger<UserService> logger)
     {
-        private readonly Dictionary<int, User> _users;
-        private readonly ILogger<UserService> _logger;
-
-        public UserService(ILogger<UserService> logger)
+        private readonly Dictionary<int, User> _users = new()
         {
-            _logger = logger;
-            _users = new Dictionary<int, User>
-            {
-                { 1, new User { Id = 1, Name = "Alice Johnson", Email = "alice@modern.com", CreatedAt = DateTime.UtcNow.AddDays(-100), Status = UserStatus.Active } },
-                { 2, new User { Id = 2, Name = "Bob Smith", Email = "bob@modern.com", CreatedAt = DateTime.UtcNow.AddDays(-80), Status = UserStatus.Active } },
-                { 3, new User { Id = 3, Name = "Charlie Brown", Email = "charlie@modern.com", CreatedAt = DateTime.UtcNow.AddDays(-60), Status = UserStatus.Inactive } }
-            };
-        }
+            { 1, new User { Id = 1, Name = "Alice Johnson", Email = "alice@modern.com", CreatedAt = DateTime.UtcNow.AddDays(-100), Status = UserStatus.Active } },
+            { 2, new User { Id = 2, Name = "Bob Smith", Email = "bob@modern.com", CreatedAt = DateTime.UtcNow.AddDays(-80), Status = UserStatus.Active } },
+            { 3, new User { Id = 3, Name = "Charlie Brown", Email = "charlie@modern.com", CreatedAt = DateTime.UtcNow.AddDays(-60), Status = UserStatus.Inactive } }
+        };
 
         public Task<IEnumerable<UserResponse>> GetAllUsersAsync(
             UserStatus? statusFilter = null,
@@ -56,7 +49,7 @@ namespace ModernApi.Services
             };
 
             _users[newId] = user;
-            _logger.LogInformation("Created new user: {UserId} - {UserName}", newId, request.Name);
+            logger.LogInformation("Created new user: {UserId} - {UserName}", newId, request.Name);
 
             return Task.FromResult(MapToResponse(user));
         }
@@ -73,7 +66,7 @@ namespace ModernApi.Services
             if (request.Status.HasValue)
                 user.Status = request.Status.Value;
 
-            _logger.LogInformation("Updated user: {UserId}", id);
+            logger.LogInformation("Updated user: {UserId}", id);
             return Task.FromResult(true);
         }
 
@@ -81,7 +74,7 @@ namespace ModernApi.Services
         {
             var removed = _users.Remove(id);
             if (removed)
-                _logger.LogInformation("Deleted user: {UserId}", id);
+                logger.LogInformation("Deleted user: {UserId}", id);
             return Task.FromResult(removed);
         }
 

@@ -25,7 +25,7 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference();
 }
 
-app.Use(async (context, next) =>
+app.Use(async (HttpContext context, Func<Task> next) =>
 {
    context.Response.OnStarting(() =>
    {
@@ -111,17 +111,13 @@ app.MapGet("/api/users/{user_id:int}", (int user_id) =>
     });
 });
 
-app.MapPost("/api/users", (HttpRequest request) =>
+app.MapPost("/api/users", (HttpRequest request) => Results.Ok(new
 {
-    // 模拟旧系统的表单数据解析
-    return Results.Ok(new
-    {
-        success = true,
-        message = "This endpoint is complex in legacy system",
-        note = "Requires form parsing, validation middleware, etc.",
-        source = "legacy-system"
-    });
-});
+    success = true,
+    message = "This endpoint is complex in legacy system",
+    note = "Requires form parsing, validation middleware, etc.",
+    source = "legacy-system"
+}));
 
 app.MapPost("/api/users/create", (UserCreateRequest request) =>
 {
@@ -193,5 +189,5 @@ app.MapGet("/api/products", () => Results.Ok(new { message = "Products from lega
 
 app.Run("http://localhost:5001");
 
-public record UserCreateRequest(string name, string email);
-public record UserUpdateRequest(string? name, string? email, string? status);
+public abstract record UserCreateRequest(string name, string email);
+public abstract record UserUpdateRequest(string? name, string? email, string? status);

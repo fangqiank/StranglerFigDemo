@@ -51,7 +51,7 @@ var app = builder.Build();
 
 app.UseCors();
 
-app.Use(async (context, next) =>
+app.Use(async (HttpContext context, Func<Task> next) =>
 {
     var startTime = DateTime.UtcNow;
     var requestId = Guid.NewGuid().ToString("N")[..8];
