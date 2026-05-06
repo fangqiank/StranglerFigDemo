@@ -1,0 +1,13 @@
+{
+  "name": "legacy-api-node",
+  "version": "2.3.1",
+  "description": "LegacyApi rewritten in Node.js Express (Strangler Fig Pattern demo)",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0"
+  }
+}

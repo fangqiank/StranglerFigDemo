@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="test-migration.ps1" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="LegacyApi/LegacyApi.csproj" />
+    <Project Path="ModernApi/ModernApi.csproj" />
+    <Project Path="Proxy/Proxy.csproj" />
+  </Folder>
+</Solution>
