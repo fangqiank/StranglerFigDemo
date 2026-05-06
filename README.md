@@ -4,13 +4,18 @@ A cross-platform demo of the **Strangler Fig Pattern** — gradually migrating a
 
 ## Architecture
 
-![Architecture](StranglerFigDemo-architecture.svg)
+![Architecture](strangler-fig-architecture.svg)
+
+```
+Client :5000 → Proxy (YARP) ──┬→ LegacyApiNode :5001  (Node.js + Express + Prisma + SQLite)
+                               └→ ModernApi :5002     (.NET 10 + Dapper + SQLite)
+```
 
 | Component | Stack | Port | Role |
 |-----------|-------|------|------|
 | **Proxy** | .NET 10 + YARP | `:5000` | Reverse proxy, config-driven routing, phase management |
-| **LegacyApi** | Node.js + Express | `:5001` | Legacy system with snake_case fields |
-| **ModernApi** | .NET 10 Minimal APIs | `:5002` | Modern system with PascalCase, DI, validation |
+| **LegacyApiNode** | Node.js + Express + Prisma | `:5001` | Legacy system with snake_case fields, SQLite persistence |
+| **ModernApi** | .NET 10 Minimal APIs + Dapper | `:5002` | Modern system with PascalCase, DI, validation, SQLite persistence |
 
 ## How It Works
 
@@ -20,9 +25,9 @@ The proxy uses YARP route configs to decide which backend handles each request. 
 
 | Phase | Config | Routing |
 |-------|--------|---------|
-| **Phase 1** | `Phase1-FullLegacy` | All requests -> LegacyApi (Node.js) |
-| **Phase 2** | `Phase2-MigrateGetUsers` | `GET /api/users` -> ModernApi (.NET), rest -> LegacyApi |
-| **Phase 3** | `Phase3-MigrateAllUsers` | All `/api/users/*` -> ModernApi (.NET), rest -> LegacyApi |
+| **Phase 1** | `Phase1-FullLegacy` | All requests → LegacyApiNode (Node.js) |
+| **Phase 2** | `Phase2-MigrateGetUsers` | `GET /api/users` → ModernApi (.NET), rest → LegacyApiNode |
+| **Phase 3** | `Phase3-MigrateAllUsers` | All `/api/users/*` → ModernApi (.NET), rest → LegacyApiNode |
 
 ### X-Served-By Header
 
@@ -50,14 +55,14 @@ Additional response headers: `X-API-Source` (legacy/modern), `X-API-Version`, `X
 dotnet run --project ModernApi
 ```
 
-**Terminal 2** — Run the test script (auto-starts LegacyApi + Proxy):
+**Terminal 2** — Run the test script (auto-starts LegacyApiNode + Proxy):
 
 ```powershell
 .\test-migration.ps1
 ```
 
 The script will:
-1. Start the Node.js LegacyApi on port 5001
+1. Start the Node.js LegacyApiNode on port 5001
 2. Build the Proxy project
 3. Run through all three phases, restarting the proxy between each
 4. Display results with `X-Served-By` identification
@@ -66,11 +71,12 @@ The script will:
 ### Run Services Individually
 
 ```bash
-# LegacyApi (Node.js)
-cd LegacyApiNode && npm start
+# LegacyApiNode (Node.js)
+cd LegacyApiNode && npm run db:setup   # First time: generate Prisma client + seed data
+npm start
 
 # ModernApi (.NET)
-dotnet run --project ModernApi
+dotnet run --project ModernApi          # Auto-creates SQLite DB + seed data on startup
 
 # Proxy (.NET)
 dotnet run --project Proxy
@@ -86,22 +92,38 @@ dotnet run --project Proxy
 │   ├── appsettings.Phase2-MigrateGetUsers.json
 │   └── appsettings.Phase3-MigrateAllUsers.json
 ├── LegacyApiNode/            # Legacy system (Node.js + Express)
+│   ├── prisma/
+│   │   ├── schema.prisma     # Prisma schema (SQLite)
+│   │   └── seed.js           # Seed data (7 users)
 │   ├── src/
 │   │   ├── index.js          # Express app, all endpoints
-│   │   └── data.js           # Seed user data (Map)
+│   │   └── data.js           # Prisma client instance
 │   └── package.json
 ├── ModernApi/                # Modern system (.NET 10)
-│   ├── Program.cs            # Minimal APIs with DI
+│   ├── Program.cs            # Minimal APIs with DI + DB initialization
 │   ├── Models/User.cs        # User model, DTOs, enums
-│   └── Services/UserService.cs
+│   └── Services/UserService.cs  # Dapper + SQLite CRUD
 ├── test-migration.ps1        # Automated test script
-└── StranglerFigDemo-architecture.svg
+├── strangler-fig-architecture.svg
+└── CLAUDE.md
 ```
+
+## Persistence
+
+Both APIs use **SQLite** for data persistence with independent databases:
+
+| API | ORM | Database File | Seed Data |
+|-----|-----|---------------|-----------|
+| LegacyApiNode | Prisma 5 | `LegacyApiNode/legacyapi.db` | 7 users (Prisma seed) |
+| ModernApi | Dapper | `ModernApi/modernapi.db` | 5 users (auto-created on startup) |
+
+- **LegacyApiNode**: Schema defined in `prisma/schema.prisma`, migrations via `npx prisma db push`, seeding via `node prisma/seed.js`
+- **ModernApi**: Table auto-created on startup in `Program.cs`, seed data inserted if table is empty
 
 ## API Endpoints
 
-| Method | Endpoint | LegacyApi | ModernApi |
-|--------|----------|-----------|-----------|
+| Method | Endpoint | LegacyApiNode | ModernApi |
+|--------|----------|---------------|-----------|
 | GET | `/health` | Phase 1 | Phase 1-3 |
 | GET | `/api/users` | Phase 1 | Phase 2-3 |
 | GET | `/api/users/{id}` | Phase 1-2 | Phase 3 |
@@ -114,8 +136,8 @@ dotnet run --project Proxy
 
 ## Data Model Comparison
 
-| Field | LegacyApi (Node.js) | ModernApi (.NET) |
-|-------|---------------------|-------------------|
+| Field | LegacyApiNode (Node.js) | ModernApi (.NET) |
+|-------|-------------------------|-------------------|
 | ID | `user_id` (snake_case) | `Id` (PascalCase) |
 | Name | `user_name` | `Name` [Required] |
 | Email | `user_email` | `Email` [EmailAddress] |

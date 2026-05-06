@@ -1,10 +1,9 @@
 const express = require("express");
-const users = require("./data");
+const prisma = require("./data");
 
 const app = express();
 app.use(express.json());
 
-// Response headers matching .NET LegacyApi
 app.use((_req, res, next) => {
   res.set("X-API-Source", "legacy");
   res.set("X-API-Version", "2.3.1");
@@ -13,7 +12,6 @@ app.use((_req, res, next) => {
   next();
 });
 
-// Health
 app.get("/health", (_req, res) => {
   res.json({
     status: "healthy",
@@ -23,19 +21,24 @@ app.get("/health", (_req, res) => {
   });
 });
 
-// Get all users
-app.get("/api/users", (req, res) => {
-  let result = [...users.values()];
-
+app.get("/api/users", async (req, res) => {
   const { status, page = 1, limit = 10 } = req.query;
-  if (status) {
-    result = result.filter((u) => u.status_code.toLowerCase() === status.toLowerCase());
-  }
-
   const currentPage = Number(page);
   const pageSize = Number(limit);
-  const totalUsers = result.length;
-  const paged = result.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  const where = status
+    ? { status_code: { equals: status.toUpperCase() } }
+    : {};
+
+  const [totalUsers, paged] = await Promise.all([
+    prisma.user.count({ where }),
+    prisma.user.findMany({
+      where,
+      skip: (currentPage - 1) * pageSize,
+      take: pageSize,
+      orderBy: { user_id: "asc" },
+    }),
+  ]);
 
   res.json({
     success: true,
@@ -57,10 +60,9 @@ app.get("/api/users", (req, res) => {
   });
 });
 
-// Get user by ID
-app.get("/api/users/:user_id", (req, res) => {
+app.get("/api/users/:user_id", async (req, res) => {
   const id = Number(req.params.user_id);
-  const user = users.get(id);
+  const user = await prisma.user.findUnique({ where: { user_id: id } });
 
   if (!user) {
     return res.status(404).json({
@@ -84,7 +86,6 @@ app.get("/api/users/:user_id", (req, res) => {
   });
 });
 
-// Create user (placeholder)
 app.post("/api/users", (_req, res) => {
   res.json({
     success: true,
@@ -94,17 +95,15 @@ app.post("/api/users", (_req, res) => {
   });
 });
 
-// Create user (actual)
-app.post("/api/users/create", (req, res) => {
-  const newId = Math.max(...users.keys()) + 1;
-  const newUser = {
-    user_id: newId,
-    user_name: req.body.name,
-    user_email: req.body.email,
-    created_date: new Date().toISOString().slice(0, 10),
-    status_code: "A",
-  };
-  users.set(newId, newUser);
+app.post("/api/users/create", async (req, res) => {
+  const newUser = await prisma.user.create({
+    data: {
+      user_name: req.body.name,
+      user_email: req.body.email,
+      created_date: new Date().toISOString().slice(0, 10),
+      status_code: "A",
+    },
+  });
 
   res.status(201).json({
     success: true,
@@ -114,36 +113,37 @@ app.post("/api/users/create", (req, res) => {
   });
 });
 
-// Update user
-app.put("/api/users/:user_id", (req, res) => {
+app.put("/api/users/:user_id", async (req, res) => {
   const id = Number(req.params.user_id);
-  const user = users.get(id);
+  const user = await prisma.user.findUnique({ where: { user_id: id } });
   if (!user) {
     return res.status(404).json({ success: false, error: "User not found", source: "legacy-system" });
   }
 
-  if (req.body.name) user.user_name = req.body.name;
-  if (req.body.email) user.user_email = req.body.email;
-  if (req.body.status) user.status_code = req.body.status;
+  const data = {};
+  if (req.body.name) data.user_name = req.body.name;
+  if (req.body.email) data.user_email = req.body.email;
+  if (req.body.status) data.status_code = req.body.status;
 
+  if (Object.keys(data).length > 0) {
+    await prisma.user.update({ where: { user_id: id }, data });
+  }
   res.json({ success: true, message: "User updated", source: "legacy-system" });
 });
 
-// Delete user
-app.delete("/api/users/:user_id", (req, res) => {
+app.delete("/api/users/:user_id", async (req, res) => {
   const id = Number(req.params.user_id);
-  if (!users.delete(id)) {
+  const result = await prisma.user.deleteMany({ where: { user_id: id } });
+  if (result.count === 0) {
     return res.status(404).json({ success: false, error: "User not found", source: "legacy-system" });
   }
   res.json({ success: true, message: "User deleted", source: "legacy-system" });
 });
 
-// Orders (stub)
 app.get("/api/orders", (_req, res) => {
   res.json({ message: "Orders from legacy system", source: "legacy-system" });
 });
 
-// Products (stub)
 app.get("/api/products", (_req, res) => {
   res.json({ message: "Products from legacy system", source: "legacy-system" });
 });

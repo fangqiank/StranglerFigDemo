@@ -1,23 +1,27 @@
+using Dapper;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.Sqlite;
 using ModernApi.Models;
 using ModernApi.Services;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-
 builder.Services.AddOpenApi();
 
+var dbPath = Path.Combine(builder.Environment.ContentRootPath, "modernapi.db");
+var db = new SqliteConnection($"Data Source={dbPath}");
+db.Open();
+InitializeDatabase(db);
+
+builder.Services.AddSingleton(db);
 builder.Services.AddSingleton<UserService>();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
-
     app.MapScalarApiReference();
 }
 
@@ -40,7 +44,7 @@ var usersGroup = app.MapGroup("/api/users")
     .WithTags("Users");
 
 usersGroup.MapGet("/", async (
-    [FromKeyedServices] UserService userService,
+    [FromServices] UserService userService,
     [FromQuery] string? status,
     [FromQuery] int page = 1,
     [FromQuery] int pageSize = 10
@@ -154,3 +158,29 @@ bool IsValidEmail(string email)
 }
 
 app.Run("http://localhost:5002");
+
+static void InitializeDatabase(SqliteConnection db)
+{
+    db.Execute("""
+        CREATE TABLE IF NOT EXISTS Users (
+            Id INTEGER PRIMARY KEY AUTOINCREMENT,
+            Name TEXT NOT NULL,
+            Email TEXT NOT NULL,
+            CreatedAt TEXT NOT NULL,
+            Status INTEGER NOT NULL DEFAULT 1
+        )
+        """);
+
+    var count = db.ExecuteScalar<int>("SELECT COUNT(*) FROM Users");
+    if (count == 0)
+    {
+        db.Execute("""
+            INSERT INTO Users (Name, Email, CreatedAt, Status) VALUES
+            ('Alice Johnson', 'alice@modern.com', '2025-08-01T00:00:00Z', 1),
+            ('Bob Smith', 'bob@modern.com', '2025-08-15T00:00:00Z', 1),
+            ('Charlie Brown', 'charlie@modern.com', '2025-09-01T00:00:00Z', 2),
+            ('Diana Prince', 'diana@modern.com', '2025-09-15T00:00:00Z', 1),
+            ('Eve Wilson', 'eve@modern.com', '2025-10-01T00:00:00Z', 3)
+            """);
+    }
+}

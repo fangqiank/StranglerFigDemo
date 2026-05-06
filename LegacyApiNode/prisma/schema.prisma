@@ -1,0 +1,16 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:../legacyapi.db"
+}
+
+model User {
+  user_id     Int    @id @default(autoincrement())
+  user_name   String
+  user_email  String
+  created_date String
+  status_code String @default("A")
+}
