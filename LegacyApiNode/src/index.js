@@ -1,5 +1,5 @@
-const express = require("express");
-const prisma = require("./data");
+import express from "express";
+import prisma from "./data.js";
 
 const app = express();
 app.use(express.json());

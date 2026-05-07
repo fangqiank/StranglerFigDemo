@@ -93,13 +93,14 @@ dotnet run --project Proxy
 │   ├── appsettings.Phase1-FullLegacy.json
 │   ├── appsettings.Phase2-MigrateGetUsers.json
 │   └── appsettings.Phase3-MigrateAllUsers.json
-├── LegacyApiNode/            # Legacy system (Node.js + Express)
+├── LegacyApiNode/            # Legacy system (Node.js + Express, ESM)
 │   ├── prisma/
 │   │   ├── schema.prisma     # Prisma schema (SQLite)
 │   │   └── seed.js           # Seed data (7 users)
 │   ├── src/
 │   │   ├── index.js          # Express app, all endpoints
-│   │   └── data.js           # Prisma client instance
+│   │   └── data.js           # Prisma client with better-sqlite3 adapter
+│   ├── prisma.config.ts      # Prisma 7 datasource config
 │   └── package.json
 ├── ModernApi/                # Modern system (.NET 10)
 │   ├── Program.cs            # Minimal APIs with DI + DB initialization
@@ -116,11 +117,11 @@ Both APIs share a single **SQLite** database (`shared.db`) at the project root:
 
 | API | ORM | Database File | Schema |
 |-----|-----|---------------|--------|
-| LegacyApiNode | Prisma 5 | `shared.db` | `prisma/schema.prisma` (snake_case) |
+| LegacyApiNode | Prisma 7 | `shared.db` | `prisma/schema.prisma` (snake_case) |
 | ModernApi | Dapper | `shared.db` | Reads/writes via SQL aliases |
 
 - **Shared schema**: `User` table with `user_id`, `user_name`, `user_email`, `created_date`, `status_code` (snake_case)
-- **LegacyApiNode**: Prisma manages schema via `npx prisma db push`, seeding via `node prisma/seed.js`
+- **LegacyApiNode**: Prisma 7 with `better-sqlite3` driver adapter, config via `prisma.config.ts`
 - **ModernApi**: Auto-creates table if not exists, maps snake_case columns to PascalCase in responses
 - Both APIs read/write the same data, demonstrating true gradual migration
 
