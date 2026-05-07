@@ -58,8 +58,8 @@
   </g>
 
   <!-- Title Area -->
-  <g transform="translate(750, 38)">
-    <text x="0" y="0" text-anchor="middle" font-family="Arial, sans-serif" font-size="26" font-weight="bold" fill="#1e293b">Strangler Fig Pattern / 绞杀者无花果迁移模式</text>
+  <g transform="translate(750, 22)">
+    <text x="0" y="0" text-anchor="middle" font-family="Arial, sans-serif" font-size="26" font-weight="bold" fill="#1e293b">Strangler Fig Pattern</text>
     <text x="0" y="25" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" fill="#64748b">Cross-Platform Gradual Migration: Node.js + .NET 10 + YARP</text>
   </g>
 
