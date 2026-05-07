@@ -9,7 +9,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
 
-var dbPath = Path.Combine(builder.Environment.ContentRootPath, "modernapi.db");
+var dbPath = Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "shared.db"));
 var db = new SqliteConnection($"Data Source={dbPath}");
 db.Open();
 InitializeDatabase(db);
@@ -162,25 +162,27 @@ app.Run("http://localhost:5002");
 static void InitializeDatabase(SqliteConnection db)
 {
     db.Execute("""
-        CREATE TABLE IF NOT EXISTS Users (
-            Id INTEGER PRIMARY KEY AUTOINCREMENT,
-            Name TEXT NOT NULL,
-            Email TEXT NOT NULL,
-            CreatedAt TEXT NOT NULL,
-            Status INTEGER NOT NULL DEFAULT 1
+        CREATE TABLE IF NOT EXISTS User (
+            user_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_name TEXT NOT NULL,
+            user_email TEXT NOT NULL,
+            created_date TEXT NOT NULL,
+            status_code TEXT NOT NULL DEFAULT 'A'
         )
         """);
 
-    var count = db.ExecuteScalar<int>("SELECT COUNT(*) FROM Users");
+    var count = db.ExecuteScalar<int>("SELECT COUNT(*) FROM User");
     if (count == 0)
     {
         db.Execute("""
-            INSERT INTO Users (Name, Email, CreatedAt, Status) VALUES
-            ('Alice Johnson', 'alice@modern.com', '2025-08-01T00:00:00Z', 1),
-            ('Bob Smith', 'bob@modern.com', '2025-08-15T00:00:00Z', 1),
-            ('Charlie Brown', 'charlie@modern.com', '2025-09-01T00:00:00Z', 2),
-            ('Diana Prince', 'diana@modern.com', '2025-09-15T00:00:00Z', 1),
-            ('Eve Wilson', 'eve@modern.com', '2025-10-01T00:00:00Z', 3)
+            INSERT INTO User (user_name, user_email, created_date, status_code) VALUES
+            ('Alice Johnson', 'alice@legacy.com', '2023-01-15', 'A'),
+            ('Bob Smith', 'bob@legacy.com', '2023-02-20', 'A'),
+            ('Charlie Brown', 'charlie@legacy.com', '2023-03-10', 'I'),
+            ('Diana Prince', 'diana@legacy.com', '2023-04-05', 'A'),
+            ('Eve Wilson', 'eve@legacy.com', '2023-05-12', 'A'),
+            ('Frank Castle', 'frank@legacy.com', '2023-06-20', 'A'),
+            ('Grace Hopper', 'grace@legacy.com', '2023-07-15', 'I')
             """);
     }
 }

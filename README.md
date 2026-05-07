@@ -7,8 +7,10 @@ A cross-platform demo of the **Strangler Fig Pattern** — gradually migrating a
 ![Architecture](strangler-fig-architecture.svg)
 
 ```
-Client :5000 → Proxy (YARP) ──┬→ LegacyApiNode :5001  (Node.js + Express + Prisma + SQLite)
-                               └→ ModernApi :5002     (.NET 10 + Dapper + SQLite)
+Client :5000 → Proxy (YARP) ──┬→ LegacyApiNode :5001  (Node.js + Express + Prisma)
+                               └→ ModernApi :5002     (.NET 10 + Dapper)
+                                    ↘              ↙
+                                   shared.db (SQLite)
 ```
 
 | Component | Stack | Port | Role |
@@ -72,11 +74,11 @@ The script will:
 
 ```bash
 # LegacyApiNode (Node.js)
-cd LegacyApiNode && npm run db:setup   # First time: generate Prisma client + seed data
+cd LegacyApiNode && npm run db:setup   # First time: generate Prisma client + create shared.db + seed data
 npm start
 
 # ModernApi (.NET)
-dotnet run --project ModernApi          # Auto-creates SQLite DB + seed data on startup
+dotnet run --project ModernApi          # Connects to shared.db, auto-creates table if needed
 
 # Proxy (.NET)
 dotnet run --project Proxy
@@ -110,15 +112,17 @@ dotnet run --project Proxy
 
 ## Persistence
 
-Both APIs use **SQLite** for data persistence with independent databases:
+Both APIs share a single **SQLite** database (`shared.db`) at the project root:
 
-| API | ORM | Database File | Seed Data |
-|-----|-----|---------------|-----------|
-| LegacyApiNode | Prisma 5 | `LegacyApiNode/legacyapi.db` | 7 users (Prisma seed) |
-| ModernApi | Dapper | `ModernApi/modernapi.db` | 5 users (auto-created on startup) |
+| API | ORM | Database File | Schema |
+|-----|-----|---------------|--------|
+| LegacyApiNode | Prisma 5 | `shared.db` | `prisma/schema.prisma` (snake_case) |
+| ModernApi | Dapper | `shared.db` | Reads/writes via SQL aliases |
 
-- **LegacyApiNode**: Schema defined in `prisma/schema.prisma`, migrations via `npx prisma db push`, seeding via `node prisma/seed.js`
-- **ModernApi**: Table auto-created on startup in `Program.cs`, seed data inserted if table is empty
+- **Shared schema**: `User` table with `user_id`, `user_name`, `user_email`, `created_date`, `status_code` (snake_case)
+- **LegacyApiNode**: Prisma manages schema via `npx prisma db push`, seeding via `node prisma/seed.js`
+- **ModernApi**: Auto-creates table if not exists, maps snake_case columns to PascalCase in responses
+- Both APIs read/write the same data, demonstrating true gradual migration
 
 ## API Endpoints
 
@@ -134,15 +138,17 @@ Both APIs use **SQLite** for data persistence with independent databases:
 | GET | `/api/products` | Phase 1-3 | - |
 | GET | `/api/orders` | Phase 1-3 | - |
 
-## Data Model Comparison
+## Data Model
 
-| Field | LegacyApiNode (Node.js) | ModernApi (.NET) |
-|-------|-------------------------|-------------------|
-| ID | `user_id` (snake_case) | `Id` (PascalCase) |
-| Name | `user_name` | `Name` [Required] |
-| Email | `user_email` | `Email` [EmailAddress] |
-| Date | `created_date` (string) | `CreatedAt` (DateTime) |
-| Status | `status_code` ("A"/"I") | `Status` (UserStatus enum) |
+Both APIs share the same `User` table in `shared.db`:
+
+| Column | DB Schema | LegacyApiNode | ModernApi |
+|--------|-----------|---------------|-----------|
+| `user_id` | INTEGER PK | Direct use | Maps to `Id` |
+| `user_name` | TEXT NOT NULL | Direct use | Maps to `Name` |
+| `user_email` | TEXT NOT NULL | Direct use | Maps to `Email` |
+| `created_date` | TEXT | ISO date string | Parses to `DateTime` |
+| `status_code` | TEXT ("A"/"I") | Direct use | Maps to `Active`/`Inactive` |
 
 ## License
 

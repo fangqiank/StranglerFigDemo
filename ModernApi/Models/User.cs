@@ -1,29 +1,29 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace ModernApi.Models
 {
-    public class User
-    {
-        public int Id { get; set; }
-
-        [Required]
-        [StringLength(100)]
-        public required string Name { get; set; }
-
-        [Required]
-        [EmailAddress]
-        [StringLength(200)]
-        public required string Email { get; set; }
-
-        public DateTime CreatedAt { get; set; }
-
-        public UserStatus Status { get; set; } = UserStatus.Active;
-    }
     public enum UserStatus
     {
         Active = 1,
         Inactive = 2,
         Suspended = 3
+    }
+
+    public static class UserStatusExtensions
+    {
+        public static string ToCode(this UserStatus status) => status switch
+        {
+            UserStatus.Active => "A",
+            UserStatus.Inactive => "I",
+            _ => "A"
+        };
+
+        public static string ToDisplay(string code) => code switch
+        {
+            "A" => "Active",
+            "I" => "Inactive",
+            _ => code
+        };
     }
 
     public record CreateUserRequest(
